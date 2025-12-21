@@ -1,0 +1,11 @@
+base_setup.zip
+node_modules/
+dist/
+.next/
+.expo/
+web-build/
+.env
+.env.local
+.DS_Store
+coverage/
+.vscode/
