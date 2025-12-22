@@ -5,7 +5,11 @@ export const MOCK_AGENTS = [
         role: "Service & Triaging",
         description: "Handles initial inquiries and manages WhatsApp tickets.",
         status: "active",
+        isThinking: true,
         avatar: "CS",
+        tone: "Helpful & Professional",
+        systemPrompt: "You are the face of Oto. Be concise, polite, and always aim to solve the user's problem in under 3 messages.",
+        allowedTools: ["WhatsApp", "Search", "Internal Knowledge"]
     },
     {
         id: "2",
@@ -13,7 +17,11 @@ export const MOCK_AGENTS = [
         role: "Sales & CRM",
         description: "Qualifies leads and updates contact records.",
         status: "active",
+        isThinking: false,
         avatar: "SL",
+        tone: "Persuasive & Urgent",
+        systemPrompt: "Identify high-value leads quickly. Use scarcity and professional urgency to drive demo bookings.",
+        allowedTools: ["LinkedIn", "HubSpot", "Search"]
     },
     {
         id: "3",
@@ -21,7 +29,11 @@ export const MOCK_AGENTS = [
         role: "Marketing",
         description: "Content creation (Canva) and scheduling.",
         status: "idle",
+        isThinking: false,
         avatar: "SM",
+        tone: "Creative & Trendy",
+        systemPrompt: "Focus on viral hooks and visual aesthetic. Use trending emojis sparingly but effectively.",
+        allowedTools: ["Instagram", "Facebook", "Canva", "AI Image Gen"]
     },
     {
         id: "4",
@@ -29,8 +41,21 @@ export const MOCK_AGENTS = [
         role: "Inventory & Admin",
         description: "Manages inventory logs and routine reporting.",
         status: "idle",
+        isThinking: false,
         avatar: "OP",
+        tone: "Direct & Informative",
+        systemPrompt: "Be precise with numbers. Flag any inventory discrepancies immediately without flowery language.",
+        allowedTools: ["Inventory Log", "Email", "Slack"]
     },
+];
+
+export const MOCK_AGENT_LOGS = [
+    { id: 1, agentId: "1", level: "INFO", message: "Listening for new WhatsApp events...", timestamp: "11:40:01" },
+    { id: 2, agentId: "1", level: "THINK", message: "Analyzing message from +1 (555)... Detecting 'Bulk Order' intent.", timestamp: "11:40:05" },
+    { id: 3, agentId: "1", level: "TOOL", message: "Calling WhatsAppDiscovery tool for 'Alice Johnson'.", timestamp: "11:40:06" },
+    { id: 4, agentId: "1", level: "INFO", message: "Found high-value lead: Alice Johnson (CEO, Acme Corp).", timestamp: "11:40:08" },
+    { id: 5, agentId: "2", level: "INFO", message: "Sales Agent initialized for lead hand-off.", timestamp: "11:40:10" },
+    { id: 6, agentId: "1", level: "THINK", message: "Drafting follow-up based on availability...", timestamp: "11:40:12" },
 ];
 
 export const MOCK_MESSAGES = [
@@ -77,9 +102,33 @@ export const MOCK_MESSAGES = [
 ];
 
 export const MOCK_FILES = [
-    { id: "1", name: "Q3-Sales-Report.pdf", size: "2.4 MB", status: "Indexed" },
-    { id: "2", name: "Inventory-Log-Dec.xlsx", size: "1.1 MB", status: "Processing" },
-    { id: "3", name: "Customer-Feedback.txt", size: "12 KB", status: "Indexed" },
+    {
+        id: "1",
+        name: "Q3-Sales-Report.pdf",
+        size: "2.4 MB",
+        status: "Indexed",
+        type: "PDF",
+        category: "Sales",
+        lastIndexed: "Dec 18, 2025"
+    },
+    {
+        id: "2",
+        name: "Inventory-Log-Dec.xlsx",
+        size: "1.1 MB",
+        status: "Processing",
+        type: "XLSX",
+        category: "Operations",
+        lastIndexed: "Dec 20, 2025"
+    },
+    {
+        id: "3",
+        name: "Customer-Feedback.txt",
+        size: "12 KB",
+        status: "Indexed",
+        type: "TXT",
+        category: "Support",
+        lastIndexed: "Dec 15, 2025"
+    },
 ];
 
 export const MOCK_CONTACTS = [
@@ -233,15 +282,43 @@ export const MOCK_NOTES = [
     }
 ];
 
-export const MOCK_CONVERSATIONS = [
+export interface Message {
+    id: number;
+    role: "user" | "assistant" | "agent" | "owner";
+    content?: string;
+    sender?: string;
+    timestamp: string;
+    isTool?: boolean;
+    toolName?: string;
+    toolOutput?: any;
+    citations?: { id: string; name: string; snippet: string }[];
+}
+
+export interface Conversation {
+    id: string;
+    channel: "WhatsApp" | "Instagram" | "Facebook";
+    contact: string;
+    messages: Message[];
+}
+
+export const MOCK_CONVERSATIONS: Conversation[] = [
     {
         id: "conv_1",
         channel: "WhatsApp",
         contact: "Alice Johnson",
         messages: [
-            { id: 1, role: "agent", content: "Hello! The owner will be with you shortly regarding the bulk order inquiry.", sender: "Oto Agent", timestamp: "10:30 AM" },
-            { id: 2, role: "owner", content: "Hey Alice, I just saw this. I can jump on a call in 10 mins.", sender: "Alex from Antigravity", timestamp: "10:35 AM" },
-            { id: 3, role: "user", content: "Perfect, 10 mins works for me. Speak then!", sender: "Alice Johnson", timestamp: "10:36 AM" }
+            { id: 1, role: "agent", content: "Checking Business WhatsApp API...", sender: "Oto Agent", timestamp: "10:30 AM" },
+            {
+                id: 2,
+                role: "assistant",
+                isTool: true,
+                toolName: "WhatsApp Discovery",
+                toolOutput: { name: "Alice Johnson", title: "CEO at Acme Corp", status: "High Value" },
+                timestamp: "10:31 AM"
+            },
+            { id: 3, role: "agent", content: "Hello! The owner will be with you shortly regarding the bulk order inquiry. I see you've worked with us on the Q3 scaling strategy previously.", sender: "Oto Agent", timestamp: "10:32 AM", citations: [{ id: "1", name: "Q3-Sales-Report.pdf", snippet: "Alice Johnson explored Q4 scaling strategies in previous sessions..." }] },
+            { id: 4, role: "owner", content: "Hey Alice, I just saw this. I can jump on a call in 10 mins.", sender: "Alex from Antigravity", timestamp: "10:35 AM" },
+            { id: 5, role: "user", content: "Perfect, 10 mins works for me. Speak then!", sender: "Alice Johnson", timestamp: "10:36 AM" }
         ]
     },
     {
@@ -250,7 +327,15 @@ export const MOCK_CONVERSATIONS = [
         contact: "creative_mind",
         messages: [
             { id: 1, role: "user", content: "Love your latest moodboard! Do you offer commissions?", sender: "@creative_mind", timestamp: "11:00 AM" },
-            { id: 2, role: "agent", content: "Thanks for reaching out! Yes, commissions are open. What did you have in mind?", sender: "Oto Agent", timestamp: "11:05 AM" }
+            {
+                id: 2,
+                role: "assistant",
+                isTool: true,
+                toolName: "Escalation Manager",
+                toolOutput: "Escalated to @ezron via Slack/WhatsApp.",
+                timestamp: "11:02 AM"
+            },
+            { id: 3, role: "agent", content: "Thanks for reaching out! Yes, commissions are open. What did you have in mind?", sender: "Oto Agent", timestamp: "11:05 AM" }
         ]
     }
 ];
@@ -286,4 +371,34 @@ export const MOCK_CURRENT_USER = {
             { platform: "Website", url: "https://antigravity.agency" }
         ]
     }
+};
+
+export const MOCK_ANALYTICS_DATA = {
+    hoursSaved: [
+        { date: "Dec 01", value: 4.2 }, { date: "Dec 02", value: 3.8 }, { date: "Dec 03", value: 5.1 },
+        { date: "Dec 04", value: 4.9 }, { date: "Dec 05", value: 3.2 }, { date: "Dec 06", value: 2.1 },
+        { date: "Dec 07", value: 2.5 }, { date: "Dec 08", value: 4.8 }, { date: "Dec 09", value: 5.5 },
+        { date: "Dec 10", value: 6.2 }, { date: "Dec 11", value: 5.9 }, { date: "Dec 12", value: 4.1 },
+        { date: "Dec 13", value: 2.8 }, { date: "Dec 14", value: 3.0 }, { date: "Dec 15", value: 5.2 },
+        { date: "Dec 16", value: 6.8 }, { date: "Dec 17", value: 7.1 }, { date: "Dec 18", value: 6.9 },
+        { date: "Dec 19", value: 8.2 }, { date: "Dec 20", value: 12.5 }, { date: "Dec 21", value: 14.2 }
+    ],
+    inquiriesResolved: [
+        { date: "Dec 01", value: 45 }, { date: "Dec 02", value: 52 }, { date: "Dec 03", value: 48 },
+        { date: "Dec 04", value: 61 }, { date: "Dec 05", value: 55 }, { date: "Dec 06", value: 32 },
+        { date: "Dec 07", value: 28 }, { date: "Dec 08", value: 65 }, { date: "Dec 09", value: 78 },
+        { date: "Dec 10", value: 82 }, { date: "Dec 11", value: 91 }, { date: "Dec 12", value: 85 },
+        { date: "Dec 13", value: 42 }, { date: "Dec 14", value: 38 }, { date: "Dec 15", value: 95 },
+        { date: "Dec 16", value: 110 }, { date: "Dec 17", value: 125 }, { date: "Dec 18", value: 132 },
+        { date: "Dec 19", value: 145 }, { date: "Dec 20", value: 158 }, { date: "Dec 21", value: 165 }
+    ],
+    efficiency: [
+        { date: "Dec 01", value: 18 }, { date: "Dec 02", value: 19 }, { date: "Dec 03", value: 17 },
+        { date: "Dec 04", value: 21 }, { date: "Dec 05", value: 20 }, { date: "Dec 06", value: 22 },
+        { date: "Dec 07", value: 21 }, { date: "Dec 08", value: 23 }, { date: "Dec 09", value: 22 },
+        { date: "Dec 10", value: 24 }, { date: "Dec 11", value: 25 }, { date: "Dec 12", value: 24 },
+        { date: "Dec 13", value: 26 }, { date: "Dec 14", value: 25 }, { date: "Dec 15", value: 26 },
+        { date: "Dec 16", value: 27 }, { date: "Dec 17", value: 28 }, { date: "Dec 18", value: 27 },
+        { date: "Dec 19", value: 29 }, { date: "Dec 20", value: 31 }, { date: "Dec 21", value: 32 }
+    ]
 };
