@@ -1,10 +1,28 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Badge, Tabs, TabsContent, TabsList, TabsTrigger, Separator, Avatar, AvatarFallback, AvatarImage } from "@oto/ui";
-import { Plus, Calendar as CalendarIcon, FileText, CheckSquare, Users, Sparkles, Briefcase, Clock, ChevronRight } from "lucide-react";
-import { MOCK_CLIENTS, MOCK_TASKS, MOCK_EVENTS, MOCK_TEAM } from "../../../data/mock";
+import { Plus, Calendar as CalendarIcon, FileText, CheckSquare, Users, Sparkles, Briefcase, Clock, ChevronRight, BarChart, TrendingUp, Zap } from "lucide-react";
+import { MOCK_CLIENTS, MOCK_TASKS, MOCK_EVENTS, MOCK_TEAM, MOCK_PRODUCTIVITY } from "../../../data/mock";
+import { InteractiveChart } from "@/components/InteractiveChart";
+import { AnalyticsDrilldownSheet, type AnalyticsMetric } from "@/components/AnalyticsDrilldownSheet";
+import { generateEfficiencyIndexSeries, generateWeeklyFloatSeries, generateWeeklyIntSeries } from "@/lib/analytics";
 
 export default function WorkspacePage() {
+    const [selectedMetric, setSelectedMetric] = useState<AnalyticsMetric | null>(null);
+
+    const metrics = useMemo(() => {
+        const inquiriesSeries = generateWeeklyIntSeries(MOCK_PRODUCTIVITY.inquiriesResolved);
+        const hoursSeries = generateWeeklyFloatSeries(MOCK_PRODUCTIVITY.hoursSaved, 1);
+        const efficiencySeries = generateEfficiencyIndexSeries(MOCK_PRODUCTIVITY.efficiencyGain);
+
+        return {
+            inquiriesSeries,
+            hoursSeries,
+            efficiencySeries,
+        };
+    }, []);
+
     return (
         <div className="h-full overflow-y-auto p-8">
             <div className="max-w-6xl mx-auto space-y-8">
@@ -22,6 +40,104 @@ export default function WorkspacePage() {
                             <Plus className="mr-2 h-4 w-4" /> New Task
                         </Button>
                     </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card
+                        className="cursor-pointer hover:border-primary/30"
+                        onClick={() => setSelectedMetric({
+                            id: "workspace_inquiries",
+                            title: "Inquiries Handled",
+                            description: "Inbound requests processed by the workspace workflow.",
+                            color: "#3b82f6",
+                            series: metrics.inquiriesSeries,
+                            totalLabel: "Total Inquiries",
+                            totalValue: String(MOCK_PRODUCTIVITY.inquiriesResolved)
+                        })}
+                    >
+                        <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2"><BarChart className="h-4 w-4 text-blue-500" /> Requests</CardTitle>
+                                <Badge variant="outline" className="text-[10px]">7d</Badge>
+                            </div>
+                            <CardDescription>Inbound volume</CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            <div className="flex items-end justify-between gap-4">
+                                <div>
+                                    <div className="text-2xl font-black">{MOCK_PRODUCTIVITY.inquiriesResolved}</div>
+                                    <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">total</div>
+                                </div>
+                                <div className="w-32 h-12">
+                                    <InteractiveChart data={metrics.inquiriesSeries} variant="sparkline" color="#3b82f6" height="48px" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card
+                        className="cursor-pointer hover:border-emerald-500/30"
+                        onClick={() => setSelectedMetric({
+                            id: "workspace_hours",
+                            title: "Hours Saved",
+                            description: "Estimated time saved by automations and agent execution.",
+                            color: "#10b981",
+                            series: metrics.hoursSeries,
+                            totalLabel: "Hours Saved",
+                            totalValue: `${MOCK_PRODUCTIVITY.hoursSaved}h`
+                        })}
+                    >
+                        <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2"><Zap className="h-4 w-4 text-emerald-500" /> Efficiency</CardTitle>
+                                <Badge variant="outline" className="text-[10px]">7d</Badge>
+                            </div>
+                            <CardDescription>Automation impact</CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            <div className="flex items-end justify-between gap-4">
+                                <div>
+                                    <div className="text-2xl font-black">{MOCK_PRODUCTIVITY.hoursSaved}h</div>
+                                    <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">saved</div>
+                                </div>
+                                <div className="w-32 h-12">
+                                    <InteractiveChart data={metrics.hoursSeries} variant="sparkline" color="#10b981" height="48px" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card
+                        className="cursor-pointer hover:border-purple-500/30"
+                        onClick={() => setSelectedMetric({
+                            id: "workspace_efficiency",
+                            title: "Efficiency Index",
+                            description: "Derived operational index based on weekly efficiency gain.",
+                            color: "#a855f7",
+                            series: metrics.efficiencySeries,
+                            totalLabel: "Efficiency Gain",
+                            totalValue: `+${MOCK_PRODUCTIVITY.efficiencyGain}%`
+                        })}
+                    >
+                        <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2"><TrendingUp className="h-4 w-4 text-purple-500" /> Velocity</CardTitle>
+                                <Badge variant="outline" className="text-[10px]">7d</Badge>
+                            </div>
+                            <CardDescription>Ops acceleration</CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            <div className="flex items-end justify-between gap-4">
+                                <div>
+                                    <div className="text-2xl font-black">+{MOCK_PRODUCTIVITY.efficiencyGain}%</div>
+                                    <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">gain</div>
+                                </div>
+                                <div className="w-32 h-12">
+                                    <InteractiveChart data={metrics.efficiencySeries} variant="sparkline" color="#a855f7" height="48px" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <Tabs defaultValue="tasks" className="space-y-6">
@@ -190,6 +306,8 @@ export default function WorkspacePage() {
                     </TabsContent>
 
                 </Tabs>
+
+                <AnalyticsDrilldownSheet metric={selectedMetric} onClose={() => setSelectedMetric(null)} />
             </div>
         </div>
     );

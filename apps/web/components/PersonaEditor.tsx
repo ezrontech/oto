@@ -1,24 +1,136 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
     Button, Input, Textarea, Label, Badge, Switch, ScrollArea, cn
 } from "@oto/ui";
-import { MessageSquare, Sparkles, Terminal, Shield, Zap, X, Check } from "lucide-react";
+import { Sparkles, Terminal, Shield, Zap, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { CONNECTORS } from "@/lib/integrations";
 
 interface PersonaEditorProps {
     agent: any;
     isOpen: boolean;
     onClose: () => void;
+    onSave: (updatedAgent: any) => void;
 }
 
-export function PersonaEditor({ agent, isOpen, onClose }: PersonaEditorProps) {
-    const [tone, setTone] = useState(agent?.tone || "");
-    const [prompt, setPrompt] = useState(agent?.systemPrompt || "");
+type AvailableTool = {
+    key: string;
+    name: string;
+    type: string;
+    connected: boolean;
+};
+
+export function PersonaEditor({ agent, isOpen, onClose, onSave }: PersonaEditorProps) {
+    const [tone, setTone] = useState("");
+    const [prompt, setPrompt] = useState("");
+    const [allowedTools, setAllowedTools] = useState<string[]>([]);
+    const [availableTools, setAvailableTools] = useState<AvailableTool[]>([]);
+    const [toolsLoading, setToolsLoading] = useState(false);
     const [previewLoading, setPreviewLoading] = useState(false);
     const [previewMsg, setPreviewMsg] = useState<string | null>(null);
+
+    const toolKeyIndex = useMemo(() => {
+        const map: Record<string, string> = {};
+        for (const c of Object.values(CONNECTORS)) {
+            map[c.name.toLowerCase()] = c.key;
+        }
+        map["search"] = "search";
+        map["internal knowledge"] = "knowledge";
+        return map;
+    }, []);
+
+    const normalizeToolKeys = (input: any): string[] => {
+        const raw = Array.isArray(input) ? input : [];
+        const out = new Set<string>();
+        for (const t of raw) {
+            const s = String(t);
+            const lower = s.toLowerCase();
+            const mapped = toolKeyIndex[lower];
+            out.add(mapped || s);
+        }
+        return Array.from(out);
+    };
+
+    useEffect(() => {
+        if (!agent) return;
+        setTone(agent?.tone || "");
+        setPrompt(agent?.systemPrompt || "");
+        setAllowedTools(normalizeToolKeys(agent?.allowedTools));
+        setPreviewMsg(null);
+    }, [agent]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        let cancelled = false;
+        const load = async () => {
+            setToolsLoading(true);
+            try {
+                const res = await fetch("/api/integrations/list");
+                const data = await res.json();
+                const integrations = data?.integrations || {};
+                const connectedProviders = new Set(
+                    Object.values(integrations).map((e: any) => String(e?.provider || "")).filter(Boolean)
+                );
+
+                const systemTools: AvailableTool[] = [
+                    { key: "search", name: "Search", type: "System", connected: true },
+                    { key: "knowledge", name: "Internal Knowledge", type: "System", connected: true },
+                ];
+
+                const connectorTools: AvailableTool[] = Object.values(CONNECTORS).map(c => ({
+                    key: c.key,
+                    name: c.name,
+                    type: c.authType,
+                    connected: connectedProviders.has(c.key)
+                }));
+
+                if (!cancelled) {
+                    setAvailableTools([...systemTools, ...connectorTools]);
+                }
+            } catch {
+                if (!cancelled) {
+                    const systemTools: AvailableTool[] = [
+                        { key: "search", name: "Search", type: "System", connected: true },
+                        { key: "knowledge", name: "Internal Knowledge", type: "System", connected: true },
+                    ];
+                    const connectorTools: AvailableTool[] = Object.values(CONNECTORS).map(c => ({
+                        key: c.key,
+                        name: c.name,
+                        type: c.authType,
+                        connected: false
+                    }));
+                    setAvailableTools([...systemTools, ...connectorTools]);
+                }
+            } finally {
+                if (!cancelled) setToolsLoading(false);
+            }
+        };
+
+        load();
+        return () => { cancelled = true; };
+    }, [isOpen]);
+
+    const isToolAllowed = (tool: AvailableTool) => {
+        if (allowedTools.includes(tool.key)) return true;
+        if (allowedTools.includes(tool.name)) return true;
+        const normalized = allowedTools.map(t => String(t).toLowerCase());
+        if (normalized.includes(tool.name.toLowerCase())) return true;
+        return false;
+    };
+
+    const toggleTool = (tool: AvailableTool, enabled: boolean) => {
+        const key = tool.key;
+        setAllowedTools(prev => {
+            const set = new Set(prev.map(String));
+            if (enabled) set.add(key);
+            else set.delete(key);
+            return Array.from(set);
+        });
+    };
 
     const handleGeneratePreview = () => {
         setPreviewLoading(true);
@@ -98,19 +210,30 @@ export function PersonaEditor({ agent, isOpen, onClose }: PersonaEditorProps) {
                                     <Label className="text-[10px] font-bold uppercase tracking-widest">Tool Permissions & Governance</Label>
                                 </div>
                                 <div className="bg-muted/30 rounded-2xl p-4 space-y-4 border border-border/20">
-                                    {availableTools.length > 0 ? (
+                                    {!toolsLoading && availableTools.length > 0 ? (
                                         availableTools.map(tool => (
-                                            <div key={tool.key} className="flex items-center justify-between">
+                                            <div key={tool.key} className="flex items-center justify-between gap-3">
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-medium">{tool.name}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-medium">{tool.name}</span>
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className={cn(
+                                                                "text-[9px] h-4 px-1.5 uppercase font-black tracking-widest",
+                                                                tool.connected ? "bg-emerald-500/10 text-emerald-500" : "bg-muted/50 text-muted-foreground/60"
+                                                            )}
+                                                        >
+                                                            {tool.connected ? "Connected" : "Not Connected"}
+                                                        </Badge>
+                                                    </div>
                                                     <span className="text-[10px] text-muted-foreground uppercase">{tool.type}</span>
                                                 </div>
-                                                <Switch defaultChecked={agent.allowedTools?.includes(tool.name)} />
+                                                <Switch checked={isToolAllowed(tool)} onCheckedChange={(v) => toggleTool(tool, !!v)} />
                                             </div>
                                         ))
                                     ) : (
                                         <div className="text-center py-4">
-                                            <p className="text-xs text-muted-foreground">No active tools found. Connect tools in the dashboard to enable them for agents.</p>
+                                            <p className="text-xs text-muted-foreground">{toolsLoading ? "Loading tools..." : "No active tools found. Connect tools in the dashboard to enable them for agents."}</p>
                                         </div>
                                     )}
                                 </div>
@@ -159,7 +282,17 @@ export function PersonaEditor({ agent, isOpen, onClose }: PersonaEditorProps) {
 
                     <div className="p-6 border-t border-border/20 bg-background/50">
                         <div className="flex gap-3">
-                            <Button className="flex-1 rounded-xl" onClick={onClose}>
+                            <Button
+                                className="flex-1 rounded-xl"
+                                onClick={() => {
+                                    onSave({
+                                        ...agent,
+                                        tone,
+                                        systemPrompt: prompt,
+                                        allowedTools: normalizeToolKeys(allowedTools)
+                                    });
+                                }}
+                            >
                                 <Check className="h-4 w-4 mr-2" />
                                 Save Configuration
                             </Button>

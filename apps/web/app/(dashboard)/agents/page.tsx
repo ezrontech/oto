@@ -1,26 +1,81 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     Card, CardContent, CardDescription, CardHeader, CardTitle,
-    Badge, Button, Input, Separator, Avatar, AvatarFallback, cn
+    Badge, Button, Input, Separator,
+    Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
+    Label, Textarea
 } from "@oto/ui";
 import {
-    Plus, Search, MoreHorizontal, Bot, Sparkles, MessageSquare,
-    Wrench, Settings2, Activity, Zap, ChevronRight
+    Plus, Search, Bot, Sparkles,
+    Settings2, Activity, Zap
 } from "lucide-react";
 import { MOCK_AGENTS } from "../../../data/mock";
 import { PersonaEditor } from "@/components/PersonaEditor";
 import { motion } from "framer-motion";
 
 export default function AgentsPage() {
-    const [selectedAgent, setSelectedAgent] = useState<any>(null);
+    const [agents, setAgents] = useState<any[]>(() => []);
+    const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
 
-    const filteredAgents = MOCK_AGENTS.filter(a =>
+    const [createOpen, setCreateOpen] = useState(false);
+    const [createSaving, setCreateSaving] = useState(false);
+    const [createForm, setCreateForm] = useState({ name: "", role: "", description: "" });
+
+
+    const loadAgents = async () => {
+        try {
+            const res = await fetch("/api/agents/list");
+            const data = await res.json();
+            if (Array.isArray(data?.agents)) {
+                setAgents(data.agents);
+                return;
+            }
+        } catch {
+            // ignore
+        }
+        setAgents(MOCK_AGENTS.map(a => ({ ...a })));
+    };
+
+    const saveAgent = async (agent: any) => {
+        const res = await fetch("/api/agents/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ agent })
+        });
+        if (!res.ok) return agent;
+        const data = await res.json();
+        return data?.agent || agent;
+    };
+
+    useEffect(() => {
+        loadAgents();
+    }, []);
+
+    const makeAvatar = (name: string) => {
+        return name
+            .split(/\s+/)
+            .filter(Boolean)
+            .map(w => w[0])
+            .slice(0, 2)
+            .join("")
+            .toUpperCase();
+    };
+
+    const createId = () => {
+        const anyCrypto: any = (globalThis as any).crypto;
+        if (anyCrypto?.randomUUID) return anyCrypto.randomUUID();
+        return String(Date.now());
+    };
+
+    const filteredAgents = agents.filter(a =>
         a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         a.role.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const selectedAgent = selectedAgentId ? agents.find(a => a.id === selectedAgentId) : null;
 
     return (
         <div className="h-full overflow-y-auto p-6 md:p-10 bg-background/50">
@@ -50,41 +105,14 @@ export default function AgentsPage() {
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
-                        <Button className="rounded-xl h-10 px-6 bg-gradient-to-r from-indigo-500 to-purple-600 border-0 hover:from-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/20">
+                        <Button
+                            className="rounded-xl h-10 px-6 bg-gradient-to-r from-indigo-500 to-purple-600 border-0 hover:from-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/20"
+                            onClick={() => setCreateOpen(true)}
+                        >
                             <Plus className="mr-2 h-4 w-4" /> Create Agent
                         </Button>
                     </div>
                 </div>
-
-                {/* Builder Preview / "Magic Input" */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                >
-                    <Card className="bg-muted/10 border-dashed border-2 border-primary/10 overflow-hidden relative group hover:border-primary/30 transition-colors">
-                        <div className="absolute top-0 right-0 p-8 opacity-[0.02] group-hover:scale-110 transition-transform">
-                            <Sparkles className="h-32 w-32" />
-                        </div>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-lg">
-                                <Bot className="h-5 w-5 text-primary" />
-                                Interactive Builder
-                            </CardTitle>
-                            <CardDescription className="font-medium">Describe a new role, and Oto will automatically generate the persona and toolset.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex flex-col sm:flex-row gap-4">
-                                <Input
-                                    placeholder="e.g., 'I need an agent to handle product returns and update inventory via Shopify...'"
-                                    className="h-12 text-base rounded-2xl bg-background border-border/40 focus-visible:ring-primary/20"
-                                />
-                                <Button size="lg" className="px-10 rounded-2xl font-bold shadow-xl shadow-primary/10">Build Persona</Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </motion.div>
-
-                <Separator className="opacity-40" />
 
                 {/* Active Agents List */}
                 <div className="space-y-6">
@@ -134,7 +162,7 @@ export default function AgentsPage() {
                                             variant="ghost"
                                             size="sm"
                                             className="w-full text-[10px] h-8 rounded-lg bg-background/50 hover:bg-primary/10 hover:text-primary transition-colors border border-border/40"
-                                            onClick={() => setSelectedAgent(agent)}
+                                            onClick={() => setSelectedAgentId(agent.id)}
                                         >
                                             <Settings2 className="h-3 w-3 mr-2" />
                                             Configure Intelligence
@@ -158,8 +186,92 @@ export default function AgentsPage() {
             <PersonaEditor
                 agent={selectedAgent}
                 isOpen={!!selectedAgent}
-                onClose={() => setSelectedAgent(null)}
+                onClose={() => setSelectedAgentId(null)}
+                onSave={async (updatedAgent: any) => {
+                    const saved = await saveAgent(updatedAgent);
+                    setAgents(prev => prev.map(a => a.id === saved.id ? saved : a));
+                    setSelectedAgentId(null);
+                }}
             />
+
+            <Sheet open={createOpen} onOpenChange={setCreateOpen}>
+                <SheetContent side="right" className="sm:max-w-[520px] overflow-y-auto">
+                    <SheetHeader className="mb-8">
+                        <SheetTitle className="text-xl font-bold">Create Agent</SheetTitle>
+                        <SheetDescription>Define a new digital persona and configure it after creation.</SheetDescription>
+                    </SheetHeader>
+
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Name</Label>
+                            <Input
+                                value={createForm.name}
+                                onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
+                                placeholder="e.g. Returns Specialist"
+                                className="h-11 rounded-xl"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Role</Label>
+                            <Input
+                                value={createForm.role}
+                                onChange={(e) => setCreateForm(prev => ({ ...prev, role: e.target.value }))}
+                                placeholder="e.g. Support & Ops"
+                                className="h-11 rounded-xl"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Description</Label>
+                            <Textarea
+                                value={createForm.description}
+                                onChange={(e) => setCreateForm(prev => ({ ...prev, description: e.target.value }))}
+                                placeholder="What should this agent do?"
+                                className="min-h-[140px] rounded-xl"
+                            />
+                        </div>
+
+                        <div className="flex gap-3">
+                            <Button
+                                className="flex-1 rounded-xl"
+                                disabled={createSaving || !createForm.name.trim()}
+                                onClick={async () => {
+                                    if (!createForm.name.trim()) return;
+                                    setCreateSaving(true);
+                                    try {
+                                        const agent = {
+                                            id: createId(),
+                                            name: createForm.name.trim(),
+                                            role: (createForm.role || "Custom").trim(),
+                                            description: (createForm.description || "").trim(),
+                                            status: "idle",
+                                            isThinking: false,
+                                            avatar: makeAvatar(createForm.name.trim()),
+                                            tone: "Helpful & Professional",
+                                            systemPrompt: `You are ${createForm.name.trim()}. Be concise, professional, and execute tasks reliably.`,
+                                            allowedTools: ["search", "knowledge"],
+                                        };
+
+                                        const saved = await saveAgent(agent);
+                                        setAgents(prev => [saved, ...prev]);
+                                        setCreateForm({ name: "", role: "", description: "" });
+                                        setCreateOpen(false);
+                                        setSelectedAgentId(saved.id);
+                                    } finally {
+                                        setCreateSaving(false);
+                                    }
+                                }}
+                            >
+                                {createSaving ? "Creating..." : "Create & Configure"}
+                            </Button>
+                            <Button variant="outline" className="rounded-xl" onClick={() => setCreateOpen(false)}>
+                                Cancel
+                            </Button>
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
         </div>
     );
 }

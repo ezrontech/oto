@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { MessageSquare, Settings, User, LayoutDashboard, Briefcase, Bot, Box, Layers, FlaskConical } from "lucide-react-native";
+import { MessageSquare, Settings, User, LayoutDashboard, Briefcase, Bot, Box, Layers, FlaskConical, FileText } from "lucide-react-native";
 import { useColorScheme, View } from "react-native";
 import { BlurView } from "expo-blur"; // Note: Requires install, or fallback to View with opacity
 
@@ -47,6 +47,13 @@ export default function TabLayout() {
                 options={{
                     title: "Spaces",
                     tabBarIcon: ({ color }) => <Layers size={24} color={color} />,
+                }}
+            />
+            <Tabs.Screen
+                name="articles"
+                options={{
+                    title: "Articles",
+                    tabBarIcon: ({ color }) => <FileText size={24} color={color} />,
                 }}
             />
             <Tabs.Screen

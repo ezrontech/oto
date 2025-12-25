@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@oto/ui";
-import { MessageSquare, Settings, User, Bot, FolderOpen, Box, ChevronLeft, ChevronRight, PanelLeft, LayoutDashboard, Briefcase, Layers, FlaskConical } from "lucide-react";
+import { MessageSquare, Settings, User, Bot, FolderOpen, Box, ChevronLeft, ChevronRight, PanelLeft, LayoutDashboard, Briefcase, Layers, FlaskConical, FileText } from "lucide-react";
 import { Button } from "@oto/ui";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,6 +18,7 @@ export function Sidebar({ className }: { className?: string }) {
         { href: "/myhub", label: "MyHub", icon: LayoutDashboard },
         { href: "/contacts", label: "Contacts", icon: User },
         { href: "/spaces", label: "Spaces", icon: Layers },
+        { href: "/articles", label: "Articles", icon: FileText },
         { href: "/chat", label: "Conversations", icon: Bot },
         { href: "/agents", label: "Agents", icon: Briefcase },
         { href: "/tools", label: "Labs", icon: FlaskConical },

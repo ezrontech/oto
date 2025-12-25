@@ -1,6 +1,6 @@
 # Oto AI Platform
 
-Oto is an advanced AI orchestration platform designed for seamless agent management, RAG-enabled knowledge base interaction, and business intelligence.
+Oto is an advanced AI orchestration platform that serves as your personal assistant. Oto has access to everything the platform can do and any tools you add, and it can delegate tasks to agents or create new agents to avoid overloading existing ones. It provides seamless agent management, RAG-enabled knowledge base interaction, and business intelligence.
 
 ## 🚀 Project Progress & Roadmap
 
@@ -43,3 +43,5 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 The project uses [Geist](https://vercel.com/font) for typography and Tailwind CSS for styling.
+
+**Backend Note**: When we integrate the backend, we will be using Supabase.
