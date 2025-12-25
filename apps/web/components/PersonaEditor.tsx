@@ -98,12 +98,21 @@ export function PersonaEditor({ agent, isOpen, onClose }: PersonaEditorProps) {
                                     <Label className="text-[10px] font-bold uppercase tracking-widest">Tool Permissions & Governance</Label>
                                 </div>
                                 <div className="bg-muted/30 rounded-2xl p-4 space-y-4 border border-border/20">
-                                    {["WhatsApp Write", "LinkedIn Outreach", "Inventory Access", "Slack Notifications"].map(tool => (
-                                        <div key={tool} className="flex items-center justify-between">
-                                            <span className="text-sm font-medium">{tool}</span>
-                                            <Switch defaultChecked={agent.allowedTools?.some((at: string) => tool.includes(at))} />
+                                    {availableTools.length > 0 ? (
+                                        availableTools.map(tool => (
+                                            <div key={tool.key} className="flex items-center justify-between">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-medium">{tool.name}</span>
+                                                    <span className="text-[10px] text-muted-foreground uppercase">{tool.type}</span>
+                                                </div>
+                                                <Switch defaultChecked={agent.allowedTools?.includes(tool.name)} />
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-4">
+                                            <p className="text-xs text-muted-foreground">No active tools found. Connect tools in the dashboard to enable them for agents.</p>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             </div>
 
