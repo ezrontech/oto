@@ -5,14 +5,15 @@ import Link from "next/link";
 import { cn } from "@oto/ui";
 import { MessageSquare, Settings, User, Bot, FolderOpen, Box, ChevronLeft, ChevronRight, PanelLeft, LayoutDashboard, Briefcase, Layers, FlaskConical, FileText } from "lucide-react";
 import { Button } from "@oto/ui";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { useAuth } from "@/components/auth-provider";
 
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
     const [collapsed, setCollapsed] = useState(false);
-
-    // Auto-collapse on small screens logic could go here, or handled by CSS media queries hiding it entirely
+    const { user } = useAuth();
 
     const mainLinks = [
         { href: "/myhub", label: "MyHub", icon: LayoutDashboard },
@@ -104,20 +105,22 @@ export function Sidebar({ className }: { className?: string }) {
 
             {/* Footer / Profile */}
             <div className="p-3 border-t border-sidebar-border">
-                <div className={cn(
-                    "flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors cursor-pointer",
-                    collapsed && "justify-center px-0"
-                )}
-                >
-                    <div className="w-8 h-8 rounded-full bg-sidebar-primary/10 flex items-center justify-center border border-sidebar-border shrink-0">
-                        <User className="w-4 h-4 text-sidebar-primary" />
-                    </div>
+                <div className="flex items-center gap-2">
+                    <Link href="/settings" className="flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors cursor-pointer flex-1">
+                        <div className="w-8 h-8 rounded-full bg-sidebar-primary/10 flex items-center justify-center border border-sidebar-border shrink-0">
+                            <User className="w-4 h-4 text-sidebar-primary" />
+                        </div>
+
+                        {!collapsed && (
+                            <div className="flex-1 overflow-hidden animate-in fade-in duration-300">
+                                <p className="text-sm font-medium truncate text-sidebar-foreground">{user?.name || "Guest"}</p>
+                                <p className="text-xs text-sidebar-foreground/60 truncate">Pro Plan</p>
+                            </div>
+                        )}
+                    </Link>
 
                     {!collapsed && (
-                        <div className="flex-1 overflow-hidden animate-in fade-in duration-300">
-                            <p className="text-sm font-medium truncate text-sidebar-foreground">Ezron</p>
-                            <p className="text-xs text-sidebar-foreground/60 truncate">Pro Plan</p>
-                        </div>
+                        <ThemeToggle />
                     )}
                 </div>
             </div>

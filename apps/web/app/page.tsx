@@ -1,22 +1,50 @@
-import Link from "next/link";
-import { Button } from "@oto/ui";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth-provider";
+import { createClient } from '@supabase/supabase-js';
 
 export default function Home() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-8 pb-20 gap-8 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start text-center">
-        <h1 className="text-4xl font-bold tracking-tight">Welcome to Oto</h1>
-        <p className="text-xl text-muted-foreground max-w-md">
-          Your personalized AI agent platform. Phase 2 Scaffolding Complete.
-        </p>
+  const router = useRouter();
+  const { user, loading } = useAuth();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <Link href="/chat">
-            <Button size="lg">Enter Chat App</Button>
-          </Link>
-          <Button variant="outline" size="lg">Documentation</Button>
-        </div>
-      </main>
+  useEffect(() => {
+    // Debug: Check session manually
+    const checkSession = async () => {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Manual session check in root page:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        email: session?.user?.email
+      });
+    };
+    
+    checkSession();
+
+    if (!loading) {
+      console.log('Root page effect:', { hasUser: !!user, loading });
+      if (user) {
+        // User is authenticated, auth provider will handle onboarding redirection
+        // Just redirect to myhub and let auth provider handle the rest
+        router.push("/myhub");
+      } else {
+        // User is not authenticated, redirect to login
+        console.log('No user found, redirecting to login');
+        router.push("/auth/login");
+      }
+    }
+  }, [user, loading, router]);
+
+  // Show loading state while checking authentication
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
     </div>
   );
 }

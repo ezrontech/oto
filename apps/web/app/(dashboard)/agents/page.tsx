@@ -11,7 +11,6 @@ import {
     Plus, Search, Bot, Sparkles,
     Settings2, Activity, Zap
 } from "lucide-react";
-import { MOCK_AGENTS } from "../../../data/mock";
 import { PersonaEditor } from "@/components/PersonaEditor";
 import { motion } from "framer-motion";
 
@@ -27,27 +26,25 @@ export default function AgentsPage() {
 
     const loadAgents = async () => {
         try {
-            const res = await fetch("/api/agents/list");
-            const data = await res.json();
-            if (Array.isArray(data?.agents)) {
-                setAgents(data.agents);
-                return;
+            const res = await fetch("/api/agents");
+            if (res.ok) {
+                const data = await res.json();
+                setAgents(data.data || []);
             }
-        } catch {
-            // ignore
+        } catch (error) {
+            console.error("Failed to load agents:", error);
         }
-        setAgents(MOCK_AGENTS.map(a => ({ ...a })));
     };
 
     const saveAgent = async (agent: any) => {
-        const res = await fetch("/api/agents/save", {
+        const res = await fetch("/api/agents", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ agent })
+            body: JSON.stringify(agent)
         });
         if (!res.ok) return agent;
         const data = await res.json();
-        return data?.agent || agent;
+        return data?.data || agent;
     };
 
     useEffect(() => {

@@ -1,18 +1,44 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Input, Separator, Tabs, TabsList, TabsTrigger, TabsContent, Sheet, SheetContent } from "@oto/ui";
 import { Plus, Search, MoreHorizontal, Phone, Mail, Filter, Users, Tag, MessageSquare, History, Sparkles, Send, Share2, ChevronRight, FileText, Info, X } from "lucide-react";
-import { MOCK_CONTACTS, MOCK_SEGMENTS } from "../../../data/mock";
 
 export default function ContactsPage() {
+    const [contacts, setContacts] = useState<any[]>([]);
     const [selectedContact, setSelectedContact] = useState<any>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [activeSegment, setActiveSegment] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadContacts();
+    }, []);
+
+    const loadContacts = async () => {
+        try {
+            const res = await fetch("/api/contacts");
+            if (res.ok) {
+                const data = await res.json();
+                setContacts(data.data || []);
+            }
+        } catch (error) {
+            console.error("Failed to load contacts:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredContacts = activeSegment
-        ? MOCK_CONTACTS.filter(c => c.status === activeSegment.name.split(' ')[1] || c.status === activeSegment.name.split(' ')[0])
-        : MOCK_CONTACTS;
+        ? contacts.filter(c => c.status === activeSegment.name.split(' ')[1] || c.status === activeSegment.name.split(' ')[0])
+        : contacts;
+
+    const segments = [
+        { id: 'all', name: 'All Contacts', count: contacts.length },
+        { id: 'leads', name: 'New Leads', count: contacts.filter(c => c.status === 'Lead').length },
+        { id: 'clients', name: 'Active Clients', count: contacts.filter(c => c.status === 'Client').length },
+        { id: 'prospects', name: 'Prospects', count: contacts.filter(c => c.status === 'Prospect').length },
+    ];
 
     return (
         <div className="h-full flex flex-col md:flex-row overflow-hidden bg-background">
@@ -29,7 +55,7 @@ export default function ContactsPage() {
                         >
                             <Users className="h-4 w-4" /> All Contacts
                         </Button>
-                        {MOCK_SEGMENTS.map(segment => (
+                        {segments.map((segment: any) => (
                             <Button
                                 key={segment.id}
                                 variant={activeSegment?.id === segment.id ? "secondary" : "ghost"}
@@ -100,7 +126,22 @@ export default function ContactsPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border/50">
-                                    {filteredContacts.map((contact) => (
+                                    {filteredContacts.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} className="px-6 py-12 text-center">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <Users className="h-12 w-12 text-muted-foreground mb-3" />
+                                                    <h3 className="font-semibold text-sm mb-1">No contacts yet</h3>
+                                                    <p className="text-xs text-muted-foreground mb-4">Start building your contact database</p>
+                                                    <Button size="sm">
+                                                        <Plus className="h-4 w-4 mr-2" />
+                                                        Add Contact
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredContacts.map((contact) => (
                                         <tr
                                             key={contact.id}
                                             className="hover:bg-muted/30 transition-colors cursor-pointer group"
@@ -143,7 +184,7 @@ export default function ContactsPage() {
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))}
+                                    )))}
                                 </tbody>
                             </table>
                         </div>

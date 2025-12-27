@@ -13,7 +13,8 @@ import {
     Lock,
     Settings as SettingsIcon,
     Moon,
-    Laptop
+    Laptop,
+    Sun
 } from 'lucide-react-native';
 import { useState } from 'react';
 import { MOCK_CURRENT_USER } from '../../data/mock';
@@ -21,6 +22,7 @@ import { MOCK_CURRENT_USER } from '../../data/mock';
 export default function SettingsScreen() {
     const router = useRouter();
     const [user, setUser] = useState(MOCK_CURRENT_USER);
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
     const handleToggleMessages = () => {
         setUser(prev => ({
@@ -32,21 +34,34 @@ export default function SettingsScreen() {
         }));
     };
 
+    const handleToggleTheme = () => {
+        setIsDarkMode(!isDarkMode);
+        // TODO: Implement actual theme switching logic
+    };
+
     return (
         <ScrollView className="flex-1 bg-background">
             <Stack.Screen options={{ title: 'Settings' }} />
 
             {/* Profile Header */}
             <View className="p-6 items-center border-b border-border">
-                <TouchableOpacity className="relative">
-                    <View className="h-20 w-20 rounded-full bg-primary/10 items-center justify-center border-2 border-dashed border-primary/20">
-                        <User size={32} color="#6366f1" opacity={0.4} />
-                    </View>
-                    <View className="absolute bottom-0 right-0 bg-primary p-1.5 rounded-full border-2 border-background">
-                        <Camera size={14} color="#fff" />
-                    </View>
-                </TouchableOpacity>
-                <Text className="text-xl font-bold text-foreground mt-4">{user.name}</Text>
+                <View className="flex-row items-center justify-between w-full mb-4">
+                    <TouchableOpacity className="relative">
+                        <View className="h-20 w-20 rounded-full bg-primary/10 items-center justify-center border-2 border-dashed border-primary/20">
+                            <User size={32} color="#6366f1" opacity={0.4} />
+                        </View>
+                        <View className="absolute bottom-0 right-0 bg-primary p-1.5 rounded-full border-2 border-background">
+                            <Camera size={14} color="#fff" />
+                        </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        className="h-10 w-10 rounded-full bg-secondary items-center justify-center border border-border"
+                        onPress={handleToggleTheme}
+                    >
+                        {isDarkMode ? <Sun size={18} color="#f59e0b" /> : <Moon size={18} color="#6366f1" />}
+                    </TouchableOpacity>
+                </View>
+                <Text className="text-xl font-bold text-foreground">{user.name}</Text>
                 <Text className="text-sm text-muted-foreground">{user.email}</Text>
             </View>
 
@@ -118,12 +133,20 @@ export default function SettingsScreen() {
                             label="Notifications"
                             onPress={() => router.push('/settings/notifications')}
                         />
-                        <SettingsItem
-                            icon={<Moon size={18} color="#6366f1" />}
-                            label="Appearance"
-                            value="Dark"
-                            onPress={() => router.push('/settings/appearance')}
-                        />
+                        <View className="flex-row items-center justify-between p-4 border-b border-border/50">
+                            <View className="flex-row items-center gap-3 flex-1">
+                                {isDarkMode ? <Moon size={18} color="#6366f1" /> : <Sun size={18} color="#f59e0b" />}
+                                <View className="flex-1">
+                                    <Text className="text-sm font-bold text-foreground">Dark Mode</Text>
+                                    <Text className="text-[10px] text-muted-foreground">Toggle theme appearance</Text>
+                                </View>
+                            </View>
+                            <RNSwitch
+                                value={isDarkMode}
+                                onValueChange={handleToggleTheme}
+                                trackColor={{ false: '#767577', true: '#6366f1' }}
+                            />
+                        </View>
                     </View>
                 </View>
 
