@@ -33,10 +33,10 @@ import {
 } from "@oto/ui";
 import { useAuth } from "@/components/auth-provider";
 
-export default function SettingsPage() {
+export default function SettingsView({ initialTab = "profile" }: { initialTab?: string }) {
     const { user, signOut } = useAuth();
-    const router = useRouter();
-    const [activeTab, setActiveTab] = useState("profile");
+    const router = useRouter(); // Keeping router for now, though navigation in OS might refer to WindowManager
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [loading, setLoading] = useState(false);
     const [userProfile, setUserProfile] = useState({
         name: "",
@@ -82,7 +82,7 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="h-full overflow-y-auto p-8">
+        <div className="h-full overflow-y-auto p-4 sm:p-8">
             <div className="max-w-4xl mx-auto space-y-8">
                 {/* Header */}
                 <div>
@@ -92,7 +92,7 @@ export default function SettingsPage() {
 
                 {/* Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="grid w-full grid-cols-5">
+                    <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto lg:h-10">
                         <TabsTrigger value="profile">Profile</TabsTrigger>
                         <TabsTrigger value="security">Security</TabsTrigger>
                         <TabsTrigger value="notifications">Notifications</TabsTrigger>
@@ -129,7 +129,7 @@ export default function SettingsPage() {
                                         </p>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="name">Full Name</Label>
                                         <Input
@@ -148,7 +148,7 @@ export default function SettingsPage() {
                                         />
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="company">Company</Label>
                                         <Input

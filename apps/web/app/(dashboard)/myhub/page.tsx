@@ -18,43 +18,29 @@ export default function MyHubPage() {
     }, [user]);
 
     const fetchUserData = async () => {
+        if (!user) return; // Double check
+
         try {
-            console.log('Fetching user data...');
-            
             // Fetch agents
             const agentsResponse = await fetch('/api/agents');
-            console.log('Agents API response:', agentsResponse.status);
             if (agentsResponse.ok) {
                 const agentsData = await agentsResponse.json();
-                console.log('Agents data:', agentsData);
                 setMyAgents(agentsData.data || []);
             } else {
-                const errorText = await agentsResponse.text();
-                console.error('Agents API error status:', agentsResponse.status);
-                console.error('Agents API error text:', errorText);
-                try {
-                    const errorData = JSON.parse(errorText);
-                    console.error('Agents API error JSON:', errorData);
-                } catch (e) {
-                    console.error('Could not parse error as JSON');
-                }
+                // Silently handle auth errors or empty states
                 setMyAgents([]);
             }
 
             // Fetch spaces
             const spacesResponse = await fetch('/api/spaces');
-            console.log('Spaces API response:', spacesResponse.status);
             if (spacesResponse.ok) {
                 const spacesData = await spacesResponse.json();
-                console.log('Spaces data:', spacesData);
                 setMySpaces(spacesData.data || []);
             } else {
-                const errorData = await spacesResponse.json();
-                console.error('Spaces API error:', errorData);
                 setMySpaces([]);
             }
         } catch (error) {
-            console.error('Error fetching user data:', error);
+            console.warn('Error fetching user data', error);
         } finally {
             setLoading(false);
         }

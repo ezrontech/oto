@@ -2,13 +2,19 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
+  const authHeader = request.headers.get('Authorization')
+  const token = authHeader?.split(' ')[1]
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      global: { headers: { Authorization: authHeader || '' } }
+    }
   )
-  
+
   try {
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser(token)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -29,20 +35,27 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const authHeader = request.headers.get('Authorization')
+  const token = authHeader?.split(' ')[1]
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      global: { headers: { Authorization: authHeader || '' } }
+    }
   )
-  
+
   try {
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser(token)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const articleData = await request.json()
-    
-    const { data, error } = await supabase
+    const { mailing_lists, spaces, ...articleData } = await request.json()
+
+    // 1. Insert Article
+    const { data: article, error: articleError } = await supabase
       .from('articles')
       .insert({
         ...articleData,
@@ -51,9 +64,31 @@ export async function POST(request: Request) {
       .select()
       .single()
 
-    if (error) throw error
+    if (articleError) throw articleError
 
-    return NextResponse.json({ data })
+    // 2. Handle Mailing List Distribution if published
+    if (article.status === 'published' && mailing_lists && Array.isArray(mailing_lists)) {
+      const distributions = mailing_lists.map(listId => ({
+        article_id: article.id,
+        list_id: listId,
+        sent_at: new Date().toISOString()
+      }))
+
+      const { error: distError } = await supabase
+        .from('article_distributions')
+        .insert(distributions)
+
+      if (distError) console.error('Error creating mailing distributions:', distError)
+    }
+
+    // 3. Handle Space Sharing
+    // (In a real system, this might trigger a 'Shared Content' message in the space)
+    if (article.status === 'published' && spaces && Array.isArray(spaces)) {
+      // Future logic for space sharing
+      console.log('Sharing article to spaces:', spaces)
+    }
+
+    return NextResponse.json({ data: article })
   } catch (error) {
     console.error('Error creating article:', error)
     return NextResponse.json({ error: 'Failed to create article' }, { status: 500 })

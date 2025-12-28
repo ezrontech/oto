@@ -4,13 +4,14 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Badge, Separator, Input, Textarea } from "@oto/ui";
 import { Plus, Search, Filter, Edit, Trash2, Share2, Users, Eye, MessageCircle, Calendar, TrendingUp, Send, FileText, Layout, Bold, Italic, List, Link, Image, Code, Quote, X, Globe } from "lucide-react";
 import { motion } from "framer-motion";
+import { supabase } from "@/lib/supabase";
 
 export default function ArticlesPage() {
     const [articles, setArticles] = useState<any[]>([]);
-    const [newsletters, setNewsletters] = useState<any[]>([]);
+    const [mailingLists, setMailingLists] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
-    const [activeTab, setActiveTab] = useState<"articles" | "newsletters" | "subscribers" | "analytics">("articles");
+    const [activeTab, setActiveTab] = useState<"articles" | "mailingLists" | "subscribers" | "analytics">("articles");
 
     useEffect(() => {
         loadData();
@@ -18,18 +19,23 @@ export default function ArticlesPage() {
 
     const loadData = async () => {
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const headers = {
+                "Authorization": `Bearer ${session?.access_token}`
+            };
+
             // Load articles
-            const articlesRes = await fetch("/api/articles");
+            const articlesRes = await fetch("/api/articles", { headers });
             if (articlesRes.ok) {
                 const articlesData = await articlesRes.json();
                 setArticles(articlesData.data || []);
             }
 
-            // Load newsletters
-            const newslettersRes = await fetch("/api/newsletters");
-            if (newslettersRes.ok) {
-                const newslettersData = await newslettersRes.json();
-                setNewsletters(newslettersData.data || []);
+            // Load mailing lists
+            const mailingListsRes = await fetch("/api/mailing-lists", { headers });
+            if (mailingListsRes.ok) {
+                const mailingListsData = await mailingListsRes.json();
+                setMailingLists(mailingListsData.data || []);
             }
         } catch (error) {
             console.error("Failed to load data:", error);
@@ -49,7 +55,7 @@ export default function ArticlesPage() {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight">Content Hub</h1>
-                        <p className="text-muted-foreground mt-1">Manage your articles, newsletters, and content distribution.</p>
+                        <p className="text-muted-foreground mt-1">Manage your articles, mailing lists, and content distribution.</p>
                     </div>
                     <Button>
                         <Plus className="mr-2 h-4 w-4" /> Create Content
@@ -66,11 +72,11 @@ export default function ArticlesPage() {
                         <FileText className="mr-2 h-4 w-4" /> Articles
                     </Button>
                     <Button
-                        variant={activeTab === "newsletters" ? "default" : "ghost"}
+                        variant={activeTab === "mailingLists" ? "default" : "ghost"}
                         size="sm"
-                        onClick={() => setActiveTab("newsletters")}
+                        onClick={() => setActiveTab("mailingLists")}
                     >
-                        <Send className="mr-2 h-4 w-4" /> Newsletters
+                        <List className="mr-2 h-4 w-4" /> Mailing Lists
                     </Button>
                     <Button
                         variant={activeTab === "subscribers" ? "default" : "ghost"}
@@ -160,43 +166,41 @@ export default function ArticlesPage() {
                     </div>
                 )}
 
-                {activeTab === "newsletters" && (
+                {activeTab === "mailingLists" && (
                     <div className="space-y-6">
-                        {newsletters.length === 0 ? (
+                        {mailingLists.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 text-center">
-                                <Send className="h-16 w-16 text-muted-foreground mb-4" />
-                                <h3 className="text-xl font-semibold mb-2">No newsletters yet</h3>
-                                <p className="text-muted-foreground mb-6">Create newsletters to reach your audience</p>
+                                <List className="h-16 w-16 text-muted-foreground mb-4" />
+                                <h3 className="text-xl font-semibold mb-2">No mailing lists yet</h3>
+                                <p className="text-muted-foreground mb-6">Create lists to organize your audience</p>
                                 <Button size="lg">
                                     <Plus className="mr-2 h-4 w-4" />
-                                    Create Newsletter
+                                    New Mailing List
                                 </Button>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {newsletters.map((newsletter: any) => (
-                                    <Card key={newsletter.id}>
+                                {mailingLists.map((list: any) => (
+                                    <Card key={list.id}>
                                         <CardHeader>
                                             <div className="flex justify-between items-start">
-                                                <Badge variant={newsletter.status === "active" ? "default" : "secondary"}>
-                                                    {newsletter.status}
-                                                </Badge>
+                                                <Badge variant="secondary">Active</Badge>
                                                 <Button variant="ghost" size="sm">
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
                                             </div>
-                                            <CardTitle>{newsletter.name}</CardTitle>
-                                            <CardDescription>{newsletter.description}</CardDescription>
+                                            <CardTitle>{list.name}</CardTitle>
+                                            <CardDescription>{list.description}</CardDescription>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-sm">
                                                     <span>Subscribers:</span>
-                                                    <span>{newsletter.subscribers || 0}</span>
+                                                    <span>{list.subscribers?.[0]?.count || 0}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
-                                                    <span>Frequency:</span>
-                                                    <span>{newsletter.frequency}</span>
+                                                    <span>Created:</span>
+                                                    <span>{new Date(list.created_at).toLocaleDateString()}</span>
                                                 </div>
                                             </div>
                                         </CardContent>
@@ -212,7 +216,7 @@ export default function ArticlesPage() {
                         <div className="flex flex-col items-center justify-center py-16 text-center">
                             <Users className="h-16 w-16 text-muted-foreground mb-4" />
                             <h3 className="text-xl font-semibold mb-2">Subscriber Management</h3>
-                            <p className="text-muted-foreground mb-6">Manage your newsletter subscribers</p>
+                            <p className="text-muted-foreground mb-6">Manage your mailing list subscribers</p>
                             <Button size="lg">
                                 <Plus className="mr-2 h-4 w-4" />
                                 Import Subscribers

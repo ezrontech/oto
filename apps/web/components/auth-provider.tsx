@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 email: session?.user?.email,
                 currentPath: window.location.pathname
             });
-            
+
             setSupabaseUser(session?.user ?? null);
             if (session?.user) {
                 console.log('User authenticated, fetching profile...');
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(null);
                 setLoading(false);
             }
-            
+
             // Reset loading state for sign-in failures
             if (event === 'SIGNED_IN' && !session) {
                 console.log('SIGNED_IN event but no session - possible failure');
@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const fetchUserProfile = async (userId: string) => {
         try {
             console.log('Fetching user profile for:', userId);
-            
+
             // First try to get user from database
             const { data, error } = await supabase
                 .from('users')
@@ -109,14 +109,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // User exists in database
                 console.log('User found in database, checking onboarding status');
                 setUser(data);
-                
+
                 // Check if user has completed onboarding
                 // Handle case where onboarding_completed field doesn't exist
                 const hasCompletedOnboarding = data.onboarding_completed !== undefined ? data.onboarding_completed : false;
                 const localStorageCompleted = localStorage.getItem('oto_onboarding_completed') === 'true';
-                
+
                 console.log('Onboarding check:', { hasCompletedOnboarding, localStorageCompleted });
-                
+
                 // If user hasn't completed onboarding in database, always trigger onboarding
                 // Database is the source of truth, localStorage can be out of sync
                 if (!hasCompletedOnboarding) {
@@ -135,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } else {
                 // User exists in auth but not in database (common for Google OAuth users)
                 console.log('User not found in database, creating profile...');
-                
+
                 // Create a basic profile for them
                 const { data: newUser, error: insertError } = await supabase
                     .from('users')
@@ -234,18 +234,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const signOut = async () => {
         console.log('Sign out initiated...');
         try {
-            await supabase.auth.signOut();
-            console.log('Supabase sign out successful');
+            // First attempt Supabase sign out
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.warn('Supabase sign out error (continuing with local cleanup):', error);
+            } else {
+                console.log('Supabase sign out successful');
+            }
+        } catch (error) {
+            console.error('Error during sign out process:', error);
+        } finally {
+            // ALWAYS perform client-side cleanup regardless of server response
+            console.log('Performing client-side cleanup...');
+
+            // 1. Clear state
             setUser(null);
+            setSupabaseUser(null);
+
+            // 2. Clear all Supabase tokens from localStorage
+            // This is critical because supabase.auth.signOut() might fail
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('sb-') || key.startsWith('supabase.')) {
+                    localStorage.removeItem(key);
+                }
+            });
+
+            // 3. Clear app-specific data
             localStorage.removeItem('oto_onboarding_completed');
             localStorage.removeItem('oto_onboarding_data');
-            console.log('Clearing user state and redirecting to login');
-            // Redirect to login page after sign out
-            window.location.href = '/auth/login';
-        } catch (error) {
-            console.error('Error during sign out:', error);
-            // Still try to redirect even if sign out fails
-            window.location.href = '/auth/login';
+
+            console.log('Cleanup complete, redirecting to login');
+
+            // 4. Force redirect to login
+            window.location.href = '/';
         }
     };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import {
     Tabs,
     TabsContent,
@@ -18,22 +18,46 @@ import {
     SheetTitle,
     ContactCard
 } from "@oto/ui";
-import { MOCK_SPACES, MOCK_TASKS, MOCK_EVENTS, MOCK_CLIENTS, MOCK_TEAM, MOCK_FEED, MOCK_GOALS, MOCK_CONTENT_PLAN, MOCK_CURRENT_USER } from "../../../../data/mock";
+import { MOCK_TASKS, MOCK_EVENTS, MOCK_CLIENTS, MOCK_TEAM, MOCK_FEED, MOCK_GOALS, MOCK_CONTENT_PLAN, MOCK_CURRENT_USER } from "../../../../data/mock";
 import { CheckSquare, Calendar as CalendarIcon, Users, FileText, Send, Heart, MessageCircle, Share, Home, Repeat, Bookmark, Image as ImageIcon, Video, Link as LinkIcon, MoreHorizontal, Search, Bell, Target, Layout, Rocket, FileIcon, Sparkles } from "lucide-react";
 import Link from 'next/link';
+import { supabase } from "@/lib/supabase";
 
 export default function SpaceDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    const space = MOCK_SPACES.find(s => s.id === id) || MOCK_SPACES[0];
+    const [space, setSpace] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
     const [selectedUser, setSelectedUser] = useState<any>(null);
 
+    useEffect(() => {
+        loadSpace();
+    }, [id]);
+
+    const loadSpace = async () => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const res = await fetch(`/api/spaces/${id}`, {
+                headers: {
+                    "Authorization": `Bearer ${session?.access_token}`
+                }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setSpace(data.data);
+            }
+        } catch (error) {
+            console.error("Failed to load space:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleUserClick = (user: any) => {
-        // Enforce the mock data structure for ContactCard
         setSelectedUser({
             ...user,
             contactCard: user.contactCard || {
                 visibility: "professional",
-                bio: "Active member of " + space.name,
+                bio: "Active member of " + space?.name,
                 title: "Oto Community Member",
                 connections: Math.floor(Math.random() * 500)
             },
@@ -41,12 +65,31 @@ export default function SpaceDetailPage({ params }: { params: Promise<{ id: stri
         });
     };
 
+    if (loading) {
+        return (
+            <div className="h-full flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    if (!space) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center gap-4">
+                <h2 className="text-xl font-semibold">Space not found</h2>
+                <Button asChild variant="outline">
+                    <Link href="/spaces">Back to Spaces</Link>
+                </Button>
+            </div>
+        );
+    }
+
     const renderContent = () => {
         if (space.type === "Community") {
             return <CommunitySpaceView space={space} onUserClick={handleUserClick} />;
         }
-        if (space.type === "Club") {
-            return <ClubSpaceView space={space} onUserClick={handleUserClick} />;
+        if (space.type === "Room") {
+            return <RoomSpaceView space={space} onUserClick={handleUserClick} />;
         }
         return <TeamSpaceView space={space} />;
     };
@@ -56,11 +99,13 @@ export default function SpaceDetailPage({ params }: { params: Promise<{ id: stri
             {renderContent()}
 
             <Sheet open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-                <SheetContent className="p-0 border-l-0 w-[400px]">
-                    <SheetHeader className="px-6 py-4 border-b">
-                        <SheetTitle>Digital Contact Card</SheetTitle>
+                <SheetContent className="p-0 border-l border-white/10 w-[400px] bg-background/60 backdrop-blur-2xl shadow-2xl">
+                    <SheetHeader className="px-6 py-4 border-b border-white/5">
+                        <SheetTitle className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-primary" /> Member Profile
+                        </SheetTitle>
                     </SheetHeader>
-                    <div className="flex items-center justify-center p-6 bg-muted/20 h-full overflow-y-auto">
+                    <div className="flex items-center justify-center p-6 bg-transparent h-full overflow-y-auto">
                         {selectedUser && (
                             <ContactCard
                                 user={selectedUser}
@@ -81,10 +126,10 @@ export default function SpaceDetailPage({ params }: { params: Promise<{ id: stri
 function TeamSpaceView({ space }: { space: any }) {
     return (
         <div className="h-full flex flex-col overflow-hidden">
-            <header className="px-8 py-6 border-b flex justify-between items-center bg-background z-10">
+            <header className="px-8 py-6 border-b flex justify-between items-center bg-background/60 backdrop-blur-md z-10 sticky top-0">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-                        {space.name} <span className="text-sm font-normal text-muted-foreground bg-secondary px-2 py-0.5 rounded border">Team</span>
+                        {space.name} <span className="text-sm font-normal text-primary/80 bg-primary/5 px-2 py-0.5 rounded border border-primary/20">Team</span>
                     </h1>
                     <p className="text-muted-foreground text-sm font-medium flex items-center gap-1.5 mt-1">
                         <Rocket className="h-3.5 w-3.5 text-primary" /> Internal Team Hub • Exclusive Access
@@ -98,12 +143,12 @@ function TeamSpaceView({ space }: { space: any }) {
 
             <div className="flex-1 overflow-hidden relative">
                 <Tabs defaultValue="goals" className="h-full flex flex-col">
-                    <div className="px-8 pt-4 pb-2 border-b bg-muted/20">
-                        <TabsList className="bg-background border">
-                            <TabsTrigger value="goals" className="gap-2"><Target className="h-4 w-4" /> Goals</TabsTrigger>
-                            <TabsTrigger value="planning" className="gap-2"><Layout className="h-4 w-4" /> Planning</TabsTrigger>
-                            <TabsTrigger value="tasks" className="gap-2"><CheckSquare className="h-4 w-4" /> Tasks</TabsTrigger>
-                            <TabsTrigger value="docs" className="gap-2"><FileText className="h-4 w-4" /> Docs</TabsTrigger>
+                    <div className="px-8 pt-4 pb-2 border-b bg-background/40 backdrop-blur-sm sticky top-[89px] z-10">
+                        <TabsList className="bg-background/50 border backdrop-blur-md p-1">
+                            <TabsTrigger value="goals" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"><Target className="h-4 w-4" /> Goals</TabsTrigger>
+                            <TabsTrigger value="planning" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"><Layout className="h-4 w-4" /> Planning</TabsTrigger>
+                            <TabsTrigger value="tasks" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"><CheckSquare className="h-4 w-4" /> Tasks</TabsTrigger>
+                            <TabsTrigger value="docs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"><FileText className="h-4 w-4" /> Docs</TabsTrigger>
                         </TabsList>
                     </div>
 
@@ -128,7 +173,6 @@ function TeamSpaceView({ space }: { space: any }) {
                                                 </div>
                                                 <span className="text-sm font-bold text-primary">{goal.progress}%</span>
                                             </div>
-                                            {/* Custom Progress Bar since @oto/ui doesn't have one */}
                                             <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
                                                 <div
                                                     className="h-full bg-primary transition-all duration-1000"
@@ -249,14 +293,14 @@ function CommunitySpaceView({ space, onUserClick }: { space: any, onUserClick: (
     return (
         <div className="h-full flex flex-col bg-background">
             {/* Sticky Header */}
-            <header className="px-6 py-4 border-b flex justify-between items-center bg-background/80 backdrop-blur sticky top-0 z-20">
+            <header className="px-6 py-4 border-b flex justify-between items-center bg-background/60 backdrop-blur-xl sticky top-0 z-20">
                 <div className="flex items-center gap-4">
-                    <div className="bg-primary/10 p-2 rounded-lg">
+                    <div className="bg-primary/10 p-2 rounded-lg backdrop-blur-md border border-primary/20">
                         <Users className="h-5 w-5 text-primary" />
                     </div>
                     <div>
                         <h1 className="text-xl font-bold leading-none">{space.name}</h1>
-                        <p className="text-xs text-muted-foreground mt-1">{space.members} Members • Public Space</p>
+                        <p className="text-xs text-muted-foreground mt-1">{space.member_count || 0} Members • Public Space</p>
                     </div>
                 </div>
                 <div className="flex gap-2">
@@ -271,7 +315,6 @@ function CommunitySpaceView({ space, onUserClick }: { space: any, onUserClick: (
                     {/* FEED COLUMN */}
                     <div className="space-y-6">
 
-                        {/* Composer omitted for brevity, keeping existing logic */}
                         <Card className="border-none shadow-sm bg-muted/30">
                             <CardContent className="p-4">
                                 <div className="flex gap-4">
@@ -316,7 +359,6 @@ function CommunitySpaceView({ space, onUserClick }: { space: any, onUserClick: (
                                                     </div>
                                                     <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100"><MoreHorizontal size={16} /></Button>
                                                 </div>
-                                                {/* content omitted, same as before */}
                                                 <p className="text-[15px] leading-relaxed mb-3 text-foreground/90 whitespace-pre-wrap">{post.content}</p>
 
                                                 {/* Media Rendering */}
@@ -393,15 +435,15 @@ function CommunitySpaceView({ space, onUserClick }: { space: any, onUserClick: (
     );
 }
 
-// --- CLUB SPACE (Private Group) ---
-function ClubSpaceView({ space, onUserClick }: { space: any, onUserClick: (user: any) => void }) {
+// --- ROOM SPACE (Private Group) ---
+function RoomSpaceView({ space, onUserClick }: { space: any, onUserClick: (user: any) => void }) {
     return (
         <div className="h-full flex flex-col p-8 items-center justify-center text-center">
             <div className="h-20 w-20 rounded-2xl bg-orange-100 flex items-center justify-center mb-6 text-orange-600">
-                <Home size={40} />
+                <MessageCircle size={40} />
             </div>
             <h1 className="text-3xl font-bold mb-2">{space.name}</h1>
-            <p className="text-muted-foreground max-w-md mb-8">A private club space for groups to organize events, share lists, and chat.</p>
+            <p className="text-muted-foreground max-w-md mb-8">A private room space for groups to organize events, share lists, and chat.</p>
             <div className="grid grid-cols-2 gap-4 w-full max-w-lg mb-8">
                 <Card className="hover:border-primary/50 cursor-pointer p-6 flex flex-col items-center gap-4">
                     <CalendarIcon className="h-8 w-8 text-primary" />
@@ -416,14 +458,14 @@ function ClubSpaceView({ space, onUserClick }: { space: any, onUserClick: (user:
             <div className="space-y-4 w-full max-w-md text-left">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-2">Active Members</h3>
                 <div className="flex flex-wrap gap-2">
-                    {MOCK_TEAM.map(member => (
+                    {space.space_members?.map((member: any) => (
                         <div
                             key={member.id}
                             className="flex items-center gap-2 bg-muted/30 p-2 rounded-full border border-border/50 cursor-pointer hover:border-primary hover:bg-muted/50 transition-all"
-                            onClick={() => onUserClick(member)}
+                            onClick={() => onUserClick(member.users)}
                         >
                             <div className="h-6 w-6 rounded-full bg-primary/20" />
-                            <span className="text-xs font-medium pr-2">{member.name}</span>
+                            <span className="text-xs font-medium pr-2">{member.users?.name || member.users?.email || 'Unknown User'}</span>
                         </div>
                     ))}
                 </div>
@@ -432,7 +474,6 @@ function ClubSpaceView({ space, onUserClick }: { space: any, onUserClick: (user:
     );
 }
 
-// Icons needed but not imported
 function ChevronRight(props: any) {
     return (
         <svg
@@ -449,7 +490,7 @@ function ChevronRight(props: any) {
         >
             <path d="m9 18 6-6-6-6" />
         </svg>
-    )
+    );
 }
 
 function Plus(props: any) {
@@ -469,5 +510,5 @@ function Plus(props: any) {
             <path d="M5 12h14" />
             <path d="M12 5v14" />
         </svg>
-    )
+    );
 }
